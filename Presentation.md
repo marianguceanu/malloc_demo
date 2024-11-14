@@ -1,4 +1,4 @@
-# How is memory management done at low level? Methods
+# How is memory management done at low level? `(as low as C but not ASM)` Methods
 - Allocation: malloc/calloc
 - Deallocation: free
 ---
@@ -27,7 +27,6 @@ void integer_allocation() {
 - Standard practice: `malloc` allocates exactly the number of bytes requested, no extra bytes per element, such as an `int`. 
 
 ---
-
 ### Cases Where `malloc` May Allocate Additional Bytes Beyond Requested Size
 
 - Certain situations may result in additional bytes allocation or within the allocated block.
@@ -35,12 +34,24 @@ void integer_allocation() {
 ## Here’s an overview of such scenarios:
 
 ---
-
 ### 1. Memory Alignment and Padding
    - Modern systems often require **memory alignment** to ensure efficient access. 
      This means memory allocated for certain data types often starts at specific boundaries (e.g., addresses that are multiples of 4 or 8 bytes).
    - Although `malloc` returns a block that is generally aligned, it doesn’t always add padding between each element within the allocated block.
    - **Example**: When you allocate `10 * sizeof(int)`, the entire block will be aligned according to the system’s requirements, but no padding may be allocated between each integer.
+## Drawing time! How will memory block look like for `2 * sizeof(int)`
+---
+### 2. Overhead from `malloc` Management Metadata
+   - To manage memory efficiently, `malloc` often includes **metadata** about the allocated blocks, such as size and other management details.
+   - This metadata is usually stored just before or after the allocated block, so it doesn’t affect the usable space in the allocated block itself.
+   - Thus, this metadata doesn’t increase the space allocated per `data type`, but it can increase the overall memory used.
+## Drawing time! How will memory block look like for `2 * sizeof(int)`
+---
+### 3. Memory Allocator Rounding
+   - Some memory allocators **round up** the requested allocation size to fit their internal memory management strategies. 
+     Many allocators use sizes in powers of two (e.g., 16 bytes, 32 bytes) to enhance performance and reduce fragmentation.
+   - For example, if you request an odd number of bytes (like 37 bytes, `37 * sizeof(char)`), `malloc` might round up to the nearest multiple, such as `40 bytes`. 
+     However, for requests of size `10 * sizeof(int)` (40 bytes), no rounding usually occurs, as it’s already a multiple of 8.
    - **Example**: This is observable on the `char` type, especially when trying to allocate too many items of this type.
       - Below, malloc adds padding for all the `char` elements, although they are exactly 1 byte each. To align it in memory, it allocates 4 bytes/char.
       - Because of that we get very slow results (same as if we had that number of integers).
@@ -59,30 +70,18 @@ void char_allocation() {
         printf("Now what?\n");
 }
 ```
----
-
-### 2. Overhead from `malloc` Management Metadata
-   - To manage memory efficiently, `malloc` often includes **metadata** about the allocated blocks, such as size and other management details.
-   - This metadata is usually stored just before or after the allocated block, so it doesn’t affect the usable space in the allocated block itself.
-   - Thus, this metadata doesn’t increase the space allocated per `int`, but it can increase the overall memory used.
 
 ---
-
-### 3. Memory Allocator Rounding
-   - Some memory allocators **round up** the requested allocation size to fit their internal memory management strategies. 
-     Many allocators use sizes in powers of two (e.g., 16 bytes, 32 bytes) to enhance performance and reduce fragmentation.
-   - For example, if you request an odd number of bytes (like 37 bytes), `malloc` might round up to the nearest multiple, such as 40 bytes. 
-     However, for requests like `10 * sizeof(int)` (40 bytes), no rounding usually occurs, as it’s already a multiple of 8.
-
----
-
 ### 4. Debugging and Guard Bytes
    - In debugging environments, `malloc` may add **guard bytes** around allocated blocks. These bytes help detect buffer overflows or underflows by placing markers around your data.
    - These extra bytes aren’t part of the requested allocation but are added by debugging tools or runtime environments specifically for memory safety.
+## Drawing time! Lots of small allocations vs few bigger ones
 
 ---
-
+# What if all are combined?
+## Drawing time!
+---
 #### Summary
 
-To sum up, `malloc` does not add extra bytes per `int` in a straightforward allocation. 
+To sum up, `malloc` does not add extra bytes per `data type` in a straightforward allocation. 
 However, alignment requirements, metadata, rounding, and debugging safeguards might slightly increase the overall memory allocated around the requested block.
